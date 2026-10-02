@@ -1,0 +1,20 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+.pytest_cache/
+.DS_Store
+
+# data, models and build output
+data/
+mlruns/
+mlflow.db
+artifacts/
+dbt/target/
+dbt/logs/
+dbt/dbt_packages/
+dbt/.user.yml
+*.duckdb
+*.duckdb.wal
