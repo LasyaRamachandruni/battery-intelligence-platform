@@ -69,6 +69,18 @@ def summary_features(cycles: pd.DataFrame, late: int = EARLY_CYCLES) -> dict[str
     }
 
 
+def cell_features(q_early: np.ndarray, q_late: np.ndarray, cycles: pd.DataFrame,
+                  late: int = EARLY_CYCLES) -> dict[str, float]:
+    """All features for one cell from its raw early data.
+
+    The single feature implementation shared by batch training, the prediction
+    API and the streaming consumer, so the three can never disagree (no
+    train/serve skew)."""
+    out = curve_features(q_early, q_late)
+    out.update(summary_features(cycles, late))
+    return out
+
+
 def build(lake: Lake, late: int = EARLY_CYCLES, early: int = 10) -> pd.DataFrame:
     """One row per cell: features from cycles <= late, plus batch and cycle life."""
     cells = pd.read_parquet(lake.cells)
@@ -79,14 +91,12 @@ def build(lake: Lake, late: int = EARLY_CYCLES, early: int = 10) -> pd.DataFrame
         if (cell.cell_id, early) not in curves or (cell.cell_id, late) not in curves:
             continue  # curve missing or quarantined: cell can't be scored at this window
         try:
-            s = summary_features(summary[summary.cell_id == cell.cell_id], late)
+            f = cell_features(curves[(cell.cell_id, early)], curves[(cell.cell_id, late)],
+                              summary[summary.cell_id == cell.cell_id], late)
         except ValueError:
             continue
-        row = {"cell_id": cell.cell_id, "batch": cell.batch, "charge_policy": cell.charge_policy,
-               "cycle_life": cell.cycle_life}
-        row.update(curve_features(curves[(cell.cell_id, early)], curves[(cell.cell_id, late)]))
-        row.update(s)
-        rows.append(row)
+        rows.append({"cell_id": cell.cell_id, "batch": cell.batch, "charge_policy": cell.charge_policy,
+                     "cycle_life": cell.cycle_life, **f})
     return pd.DataFrame(rows)
 
 
