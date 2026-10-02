@@ -63,8 +63,9 @@ def curve_issue(q: np.ndarray, t: np.ndarray) -> str:
         return "wrong_length"
     if not (np.isfinite(q).all() and np.isfinite(t).all()):
         return "non_finite"
-    # discharged capacity can only grow as voltage falls (allow small sensor noise)
-    if np.min(np.diff(q)) < -0.01:
+    # discharged capacity can only grow as voltage falls; allow small sensor noise,
+    # but measure the drop from the running maximum so slow declines are caught too
+    if np.max(np.maximum.accumulate(q) - q) > 0.01:
         return "non_monotonic"
     if q[-1] <= 0.1 or q[-1] > 1.3 * NOMINAL_CAPACITY_AH:
         return "implausible_capacity"
