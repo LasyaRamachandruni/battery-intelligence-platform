@@ -4,6 +4,7 @@
     bip ingest --source synthetic    # synthetic cells, no download needed
     bip transform                    # dbt build: models + data tests
     bip quality                      # SPC, curve anomalies, Weibull reliability
+    bip train                        # features, model comparison, selected model + analyses
 """
 
 from __future__ import annotations
@@ -68,6 +69,14 @@ def cmd_quality(args) -> int:
     return 0
 
 
+def cmd_train(args) -> int:
+    from .ml.train import run
+
+    result = run(_lake(args), Path(args.out) / "model", args.artifacts, _label(args), args.seed)
+    print(json.dumps(result, indent=2))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="bip", description="Battery Intelligence Platform")
     p.add_argument("--data-dir", default="data")
@@ -84,6 +93,12 @@ def build_parser() -> argparse.ArgumentParser:
     q.add_argument("--out", default="reports")
     q.add_argument("--warranty-cycles", type=int, default=500)
     q.set_defaults(fn=cmd_quality)
+
+    t = sub.add_parser("train", help="train and compare cycle-life models")
+    t.add_argument("--out", default="reports")
+    t.add_argument("--artifacts", default="artifacts")
+    t.add_argument("--seed", type=int, default=0)
+    t.set_defaults(fn=cmd_train)
     return p
 
 
