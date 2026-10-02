@@ -18,3 +18,5 @@ dbt/dbt_packages/
 dbt/.user.yml
 *.duckdb
 *.duckdb.wal
+reports/
+*.egg-info/

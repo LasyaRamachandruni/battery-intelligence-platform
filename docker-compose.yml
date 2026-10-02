@@ -1,0 +1,51 @@
+# Local stack: Kafka-compatible broker, MLflow tracking server and the prediction API.
+#
+#   bip ingest --source synthetic && bip train      # on the host, writes data/ and artifacts/
+#   docker compose up -d
+#   bip stream --role produce --bootstrap localhost:19092
+#   bip stream --role consume --bootstrap localhost:19092
+#   curl localhost:8000/health
+#
+# The API serves artifacts/life_model.joblib by default. To serve the registry champion instead,
+# register into the MLflow server (MLFLOW_TRACKING_URI=http://localhost:5000 bip register --promote)
+# and set BIP_MODEL_URI=models:/battery-cycle-life@champion on the api service.
+
+services:
+  redpanda:
+    image: redpandadata/redpanda:v24.2.7
+    command:
+      - redpanda start
+      - --smp 1
+      - --memory 512M
+      - --overprovisioned
+      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr internal://redpanda:9092,external://localhost:19092
+    ports:
+      - "19092:19092"
+    healthcheck:
+      test: ["CMD", "rpk", "cluster", "health"]
+      interval: 10s
+      retries: 10
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v3.1.0
+    command: mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri sqlite:////mlflow/mlflow.db --artifacts-destination /mlflow/artifacts
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow:/mlflow
+
+  api:
+    build: .
+    environment:
+      BIP_MODEL_PATH: /app/artifacts/life_model.joblib
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+    volumes:
+      - ./artifacts:/app/artifacts:ro
+    ports:
+      - "8000:8000"
+    depends_on:
+      - mlflow
+
+volumes:
+  mlflow:

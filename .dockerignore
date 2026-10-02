@@ -1,0 +1,9 @@
+.git
+data
+mlruns
+artifacts
+reports
+**/__pycache__
+dbt/target
+dbt/logs
+*.duckdb
