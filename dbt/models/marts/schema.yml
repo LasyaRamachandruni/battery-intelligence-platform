@@ -1,0 +1,30 @@
+version: 2
+
+models:
+  - name: cell_lifecycle
+    description: One row per cell with early-life metrics and life milestones.
+    columns:
+      - name: cell_id
+        tests: [not_null, unique]
+      - name: cycle_life
+        tests:
+          - between:
+              arguments: {min_value: 1, max_value: 5000}
+      - name: q_cycle2_ah
+        tests:
+          - between:
+              arguments: {min_value: 0.8, max_value: 1.3}
+
+  - name: batch_quality
+    columns:
+      - name: batch
+        tests: [not_null, unique]
+    tests:
+      - expression_is_true:
+          arguments:
+            expression: "cycle_life_p10 <= cycle_life_p50 and cycle_life_p50 <= cycle_life_p90"
+
+  - name: capacity_fade
+    columns:
+      - name: capacity_retention
+        tests: [not_null]
