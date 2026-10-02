@@ -3,6 +3,7 @@
     bip ingest --source severson     # real data: the three .mat files in data/raw/
     bip ingest --source synthetic    # synthetic cells, no download needed
     bip transform                    # dbt build: models + data tests
+    bip quality                      # SPC, curve anomalies, Weibull reliability
 """
 
 from __future__ import annotations
@@ -50,6 +51,23 @@ def cmd_transform(args) -> int:
     return 0 if result.success else 1
 
 
+def _label(args) -> str:
+    import pandas as pd
+
+    lake = _lake(args)
+    sources = set(pd.read_parquet(lake.cells, columns=["source"]).source)
+    return "Synthetic data (pipeline demo)" if sources == {"synthetic"} else "Severson et al. 2019 cells"
+
+
+def cmd_quality(args) -> int:
+    from .quality.report import run
+
+    result = run(_lake(args), Path(args.out) / "quality", _label(args), args.warranty_cycles)
+    print(json.dumps({k: v for k, v in result.items() if k != "weibull"}, indent=2))
+    print(json.dumps(result["weibull"]["all_cells"], indent=2))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="bip", description="Battery Intelligence Platform")
     p.add_argument("--data-dir", default="data")
@@ -61,6 +79,11 @@ def build_parser() -> argparse.ArgumentParser:
     s.set_defaults(fn=cmd_ingest)
 
     sub.add_parser("transform", help="dbt build (models + data tests)").set_defaults(fn=cmd_transform)
+
+    q = sub.add_parser("quality", help="SPC, curve anomaly detection and Weibull reliability")
+    q.add_argument("--out", default="reports")
+    q.add_argument("--warranty-cycles", type=int, default=500)
+    q.set_defaults(fn=cmd_quality)
     return p
 
 
