@@ -1,0 +1,20 @@
+version: 2
+
+models:
+  - name: stg_cycles
+    columns:
+      - name: cell_id
+        tests:
+          - not_null
+          - relationships:
+              arguments: {to: ref('stg_cells'), field: cell_id}
+      - name: capacity_retention
+        tests:
+          - between:
+              arguments: {min_value: 0, max_value: 1.2}
+      - name: discharge_capacity_ah
+        tests: [not_null]
+    tests:
+      - expression_is_true:
+          arguments:
+            expression: "cycle >= 1"

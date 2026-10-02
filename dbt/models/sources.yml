@@ -1,0 +1,15 @@
+version: 2
+
+sources:
+  - name: lake
+    description: Validated tables written by `bip ingest` (see bip/lake.py).
+    tables:
+      - name: cells
+        meta:
+          external_location: "read_parquet('{{ env_var('BIP_LAKE', '../data/lake') }}/cells.parquet')"
+        columns:
+          - name: cell_id
+            tests: [not_null, unique]
+      - name: cycle_summary
+        meta:
+          external_location: "read_parquet('{{ env_var('BIP_LAKE', '../data/lake') }}/cycle_summary/*.parquet')"

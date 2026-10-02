@@ -1,0 +1,8 @@
+# Paths are relative to this dbt/ folder; override with BIP_LAKE / BIP_WAREHOUSE.
+battery:
+  target: local
+  outputs:
+    local:
+      type: duckdb
+      path: "{{ env_var('BIP_WAREHOUSE', '../data/warehouse.duckdb') }}"
+      threads: 4
