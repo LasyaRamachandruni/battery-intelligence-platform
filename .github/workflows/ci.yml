@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - run: pip install -e ".[dev,stream,dashboard]"
+      - run: pytest -q
+
+  pipeline:
+    # the whole platform end to end on synthetic cells
+    runs-on: ubuntu-latest
+    needs: test
+    env:
+      MLFLOW_DISABLE_AGENT_HINT: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e ".[dev,stream,dashboard]"
+      - run: make demo
+      - name: Dashboard renders without errors
+        run: |
+          python - <<'PY'
+          from streamlit.testing.v1 import AppTest
+          at = AppTest.from_file("dashboard/app.py", default_timeout=120).run()
+          assert not at.exception, at.exception
+          assert not at.error, [e.value for e in at.error]
+          print(len(at.metric), "metrics rendered")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: reports
+          path: reports/
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t battery-intelligence-platform .
